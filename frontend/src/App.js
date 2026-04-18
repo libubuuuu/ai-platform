@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import API_URL from './config';
+import PublishingCenter from './components/PublishingCenter';
+import CommentAssistant from './components/CommentAssistant';
 import './App.css';
 
 const defaultRadarQuery = {
@@ -33,6 +35,10 @@ function App() {
   const [canvasJob, setCanvasJob] = useState(null);
   const [remixForm, setRemixForm] = useState(defaultRemixForm);
   const [remixJob, setRemixJob] = useState(null);
+  const [workspaceStats, setWorkspaceStats] = useState({
+    connectedAccounts: 0,
+    savedDrafts: 0,
+  });
   const [loading, setLoading] = useState({
     overview: false,
     radar: false,
@@ -53,6 +59,10 @@ function App() {
         setOverview(overviewResponse.data);
         setPlatforms(platformResponse.data.items || []);
         setCart(cartResponse.data.items || []);
+        setWorkspaceStats({
+          connectedAccounts: overviewResponse.data.connected_accounts || 0,
+          savedDrafts: overviewResponse.data.draft_count || 0,
+        });
       } catch (err) {
         setError(err.response?.data?.detail || err.message || 'Failed to load platform data');
       } finally {
@@ -157,8 +167,12 @@ function App() {
               <strong>{overview ? overview.platform_count : '...'}</strong>
             </div>
             <div className="metric-card">
+              <span>Accounts</span>
+              <strong>{workspaceStats.connectedAccounts}</strong>
+            </div>
+            <div className="metric-card">
               <span>Drafts</span>
-              <strong>{overview ? overview.draft_count : '...'}</strong>
+              <strong>{workspaceStats.savedDrafts}</strong>
             </div>
             <div className="metric-card">
               <span>Cart</span>
@@ -422,6 +436,19 @@ function App() {
             </div>
           )}
         </section>
+
+        <PublishingCenter
+          apiUrl={API_URL}
+          platforms={platforms}
+          cart={cart}
+          onStatsChange={setWorkspaceStats}
+        />
+
+        <CommentAssistant
+          apiUrl={API_URL}
+          cart={cart}
+          remixJob={remixJob}
+        />
       </main>
     </div>
   );

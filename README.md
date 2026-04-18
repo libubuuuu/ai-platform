@@ -90,3 +90,4 @@ set OWNER_ACCESS_TOKEN=your-secret-token
 - You can later replace the mock data layer with real platform integrations.
 - The current repo is now aligned to the new social content product direction, not the old sync analyzer demo.
 - The backend exposes a local API at `http://localhost:8000` and a docs endpoint at `/docs`.
+- Image and video artifact generation requires `ffmpeg` to be installed and available on `PATH`.

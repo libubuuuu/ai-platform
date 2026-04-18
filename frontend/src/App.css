@@ -660,6 +660,12 @@ select.text-input:focus {
   gap: 12px;
 }
 
+.context-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
 .variant-grid,
 .account-grid,
 .draft-box-list,
@@ -872,6 +878,10 @@ select.text-input:focus {
     grid-template-columns: 1fr;
   }
 
+  .context-actions {
+    grid-template-columns: 1fr;
+  }
+
   .card-footer {
     flex-direction: column;
     align-items: stretch;
@@ -916,7 +926,7 @@ select.text-input:focus {
 
 .header-metrics {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -1194,6 +1204,10 @@ select.text-input:focus {
 @media (max-width: 1024px) {
   .app-header__inner {
     grid-template-columns: 1fr;
+  }
+
+  .header-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .form-grid {

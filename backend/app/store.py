@@ -2,13 +2,21 @@ from __future__ import annotations
 
 import hashlib
 import os
+import shutil
+import subprocess
 import threading
 import uuid
 from datetime import datetime, timezone
 from itertools import cycle
+from pathlib import Path
 from typing import Any, Dict, List, Optional
+import textwrap
 
 OWNER_ACCESS_TOKEN = os.getenv("OWNER_ACCESS_TOKEN", "owner-demo-token")
+BASE_DIR = Path(__file__).resolve().parent
+ARTIFACT_DIR = BASE_DIR / "artifacts"
+ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
+FFMPEG_BIN = shutil.which("ffmpeg") or "ffmpeg"
 
 LOCK = threading.Lock()
 
@@ -31,6 +39,117 @@ def _slugify(value: str) -> str:
 def _stable_score(*parts: str) -> int:
     digest = hashlib.sha256("::".join(parts).encode("utf-8")).hexdigest()
     return int(digest[:8], 16)
+
+
+def _artifact_url(filename: str) -> str:
+    return f"/api/artifacts/{filename}"
+
+
+def _artifact_text_path(filename: str) -> Path:
+    return ARTIFACT_DIR / f"{Path(filename).stem}.txt"
+
+
+def _color_from_score(score: int, palette: List[str]) -> str:
+    return palette[score % len(palette)]
+
+
+def _wrap_line(prefix: str, value: str, width: int = 42) -> List[str]:
+    wrapped = textwrap.wrap(value, width=width) or [""]
+    return [f"{prefix}{wrapped[0]}"] + [f"  {line}" for line in wrapped[1:]]
+
+
+def _run_ffmpeg(command: List[str], cwd: Path) -> None:
+    if not shutil.which("ffmpeg"):
+        raise RuntimeError("ffmpeg is required to generate image and video artifacts.")
+
+    result = subprocess.run(command, cwd=str(cwd), capture_output=True, text=True)
+    if result.returncode != 0:
+        stderr = (result.stderr or result.stdout or "").strip()
+        raise RuntimeError(stderr or "ffmpeg failed to generate an artifact.")
+
+
+def _render_image(filename: str, lines: List[str], seed: str) -> str:
+    output_path = ARTIFACT_DIR / filename
+    text_path = _artifact_text_path(filename)
+    palette = [
+        "0x102A43",
+        "0x1F2933",
+        "0x0F172A",
+        "0x1E3A5F",
+        "0x274060",
+        "0x2D1B4E",
+    ]
+    accents = [
+        "0x38BDF8",
+        "0x22C55E",
+        "0xF97316",
+        "0xA855F7",
+        "0xFB7185",
+        "0xFACC15",
+    ]
+    background = _color_from_score(_stable_score(seed, "background"), palette)
+    accent = _color_from_score(_stable_score(seed, "accent"), accents)
+
+    text_path.write_text("\n".join(lines), encoding="utf-8")
+    try:
+        vf = (
+            f"drawbox=x=0:y=0:w=iw:h=18:color={accent}:t=fill,"
+            "drawbox=x=0:y=ih-28:w=iw:h=28:color=black@0.32:t=fill,"
+            "drawtext="
+            f"fontsize=34:fontcolor=white:line_spacing=14:box=1:boxcolor=black@0.45:"
+            f"boxborderw=26:x=60:y=72:textfile={text_path.name}"
+        )
+        _run_ffmpeg(
+            [
+                FFMPEG_BIN,
+                "-y",
+                "-f",
+                "lavfi",
+                "-i",
+                f"color=c={background}:s=1280x720",
+                "-frames:v",
+                "1",
+                "-update",
+                "1",
+                "-vf",
+                vf,
+                output_path.name,
+            ],
+            cwd=ARTIFACT_DIR,
+        )
+    finally:
+        text_path.unlink(missing_ok=True)
+
+    return _artifact_url(output_path.name)
+
+
+def _render_video(filename: str, storyboard_filename: str) -> str:
+    output_path = ARTIFACT_DIR / filename
+    _run_ffmpeg(
+        [
+            FFMPEG_BIN,
+            "-y",
+            "-loop",
+            "1",
+            "-i",
+            storyboard_filename,
+            "-t",
+            "5",
+            "-vf",
+            "scale=1280:720,format=yuv420p",
+            "-c:v",
+            "libx264",
+            "-preset",
+            "veryfast",
+            "-crf",
+            "23",
+            "-movflags",
+            "+faststart",
+            output_path.name,
+        ],
+        cwd=ARTIFACT_DIR,
+    )
+    return _artifact_url(output_path.name)
 
 
 PLATFORMS: List[Dict[str, Any]] = [
@@ -246,6 +365,52 @@ def _rewrite_from_sources(sources: List[Dict[str, Any]], tone: str, preserve_med
     }
 
 
+def _build_canvas_preview_lines(image_name: str, prompt_hint: str, style: str, variants: List[Dict[str, Any]]) -> List[str]:
+    lines = [
+        "Canvas Preview",
+        "",
+        *_wrap_line("Image: ", image_name),
+        *_wrap_line("Prompt hint: ", prompt_hint),
+        *_wrap_line("Style: ", style),
+        f"Variant count: {len(variants)}",
+        "",
+        "Rendered variants:",
+    ]
+    for variant in variants[:4]:
+        lines.append(f"  {variant['id']} | score {variant['score']}")
+    if len(variants) > 4:
+        lines.append(f"  + {len(variants) - 4} more")
+    return lines
+
+
+def _build_canvas_variant_lines(index: int, variant: Dict[str, Any]) -> List[str]:
+    return [
+        f"Canvas Variant {index + 1}",
+        "",
+        *_wrap_line("Prompt: ", variant["prompt"]),
+        *_wrap_line("Style: ", variant["style"]),
+        f"Score: {variant['score']}",
+        variant["note"],
+    ]
+
+
+def _build_remix_storyboard_lines(job_id: str, request: Dict[str, Any], sources: List[Dict[str, Any]], summary: str) -> List[str]:
+    lines = [
+        "Remix Storyboard",
+        "",
+        *_wrap_line("Job: ", job_id),
+        *_wrap_line("Mode: ", request["mode"]),
+        *_wrap_line("Tone: ", request["tone"]),
+        f"Preserve media: {'yes' if request['preserve_media'] else 'no'}",
+        "",
+        "Sources:",
+    ]
+    for source in sources:
+        lines.extend(_wrap_line(f"- {source['platform_name']}: ", source["title"]))
+    lines.extend(["", *_wrap_line("Summary: ", summary)])
+    return lines
+
+
 def create_remix_job(request: Dict[str, Any], sources: List[Dict[str, Any]]) -> Dict[str, Any]:
     job_id = f"remix-{uuid.uuid4().hex[:10]}"
     result = _rewrite_from_sources(
@@ -254,6 +419,14 @@ def create_remix_job(request: Dict[str, Any], sources: List[Dict[str, Any]]) -> 
         preserve_media=request["preserve_media"],
         mode=request["mode"],
     )
+    storyboard_filename = f"{job_id}-storyboard.png"
+    storyboard_url = _render_image(
+        storyboard_filename,
+        _build_remix_storyboard_lines(job_id, request, sources, result["summary"]),
+        f"{job_id}-storyboard",
+    )
+    preview_video_filename = f"{job_id}-preview.mp4"
+    preview_video_url = _render_video(preview_video_filename, storyboard_filename)
     job = {
         "job_id": job_id,
         "status": "completed",
@@ -272,6 +445,8 @@ def create_remix_job(request: Dict[str, Any], sources: List[Dict[str, Any]]) -> 
         ],
         "drafts": result["drafts"],
         "summary": result["summary"],
+        "storyboard_url": storyboard_url,
+        "preview_video_url": preview_video_url,
         "created_at": _now(),
     }
     with LOCK:
@@ -283,17 +458,30 @@ def create_remix_job(request: Dict[str, Any], sources: List[Dict[str, Any]]) -> 
 def create_canvas_job(request: Dict[str, Any]) -> Dict[str, Any]:
     job_id = f"canvas-{uuid.uuid4().hex[:10]}"
     base_prompt = f"{request['prompt_hint']} | {request['style']} | {request['image_name']}"
+    count = max(1, min(int(request.get("count", 6) or 6), 12))
     variants = []
-    for index in range(request["count"]):
-        variants.append(
-            {
-                "id": f"{job_id}-{index + 1}",
-                "prompt": f"{base_prompt} | similarity {90 - index * 5}%",
-                "style": f"{request['style']} variant {index + 1}",
-                "note": "You can extract this prompt again and feed it into the next pass.",
-                "score": 91 - index * 4,
-            }
+    for index in range(count):
+        variant = {
+            "id": f"{job_id}-{index + 1}",
+            "prompt": f"{base_prompt} | similarity {90 - index * 5}%",
+            "style": f"{request['style']} variant {index + 1}",
+            "note": "You can extract this prompt again and feed it into the next pass.",
+            "score": 91 - index * 4,
+        }
+        variant_filename = f"{job_id}-variant-{index + 1:02d}.png"
+        variant["image_url"] = _render_image(
+            variant_filename,
+            _build_canvas_variant_lines(index, variant),
+            f"{job_id}-variant-{index + 1}",
         )
+        variants.append(variant)
+
+    preview_filename = f"{job_id}-preview.png"
+    preview_image_url = _render_image(
+        preview_filename,
+        _build_canvas_preview_lines(request["image_name"], request["prompt_hint"], request["style"], variants),
+        f"{job_id}-preview",
+    )
 
     job = {
         "job_id": job_id,
@@ -301,12 +489,13 @@ def create_canvas_job(request: Dict[str, Any]) -> Dict[str, Any]:
         "image_name": request["image_name"],
         "prompt_hint": request["prompt_hint"],
         "style": request["style"],
+        "preview_image_url": preview_image_url,
         "variants": variants,
         "created_at": _now(),
     }
     with LOCK:
         STATE["canvas_jobs"][job_id] = job
-    log_activity("create_canvas_job", {"job_id": job_id, "count": request["count"]})
+    log_activity("create_canvas_job", {"job_id": job_id, "count": count})
     return job
 
 

@@ -7,6 +7,7 @@ from starlette.middleware.cors import CORSMiddleware
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
+from starlette.staticfiles import StaticFiles
 
 from . import store
 
@@ -148,7 +149,11 @@ async def create_remix(request: Request) -> JSONResponse:
     sources = [item for item in store.STATE["cart"] if item["id"] in item_ids]
     if not sources:
         return json({"detail": "At least one cart item is required"}, status=400)
-    return json(store.create_remix_job({"mode": mode, "preserve_media": preserve_media, "tone": tone}, sources))
+    try:
+        job = store.create_remix_job({"mode": mode, "preserve_media": preserve_media, "tone": tone}, sources)
+    except RuntimeError as exc:
+        return json({"detail": str(exc)}, status=500)
+    return json(job)
 
 
 async def get_remix(request: Request) -> JSONResponse:
@@ -161,16 +166,22 @@ async def get_remix(request: Request) -> JSONResponse:
 
 async def create_canvas(request: Request) -> JSONResponse:
     payload = await read_json(request)
-    return json(
-        store.create_canvas_job(
+    try:
+        count = int(payload.get("count", 6) or 6)
+    except (TypeError, ValueError):
+        count = 6
+    try:
+        job = store.create_canvas_job(
             {
                 "image_name": payload.get("image_name", "uploaded-image.png"),
                 "prompt_hint": payload.get("prompt_hint", "clean, commercial, future"),
-                "count": int(payload.get("count", 6) or 6),
+                "count": count,
                 "style": payload.get("style", "editorial"),
             }
         )
-    )
+    except RuntimeError as exc:
+        return json({"detail": str(exc)}, status=500)
+    return json(job)
 
 
 async def get_canvas(request: Request) -> JSONResponse:
@@ -245,6 +256,7 @@ routes = [
 ]
 
 app = Starlette(debug=False, routes=routes)
+app.mount("/api/artifacts", StaticFiles(directory=str(store.ARTIFACT_DIR)), name="artifacts")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -252,4 +264,3 @@ app.add_middleware(
     allow_headers=["*"],
     allow_credentials=True,
 )
-
