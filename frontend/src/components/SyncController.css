@@ -1,0 +1,178 @@
+.sync-controller {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.sync-controller h2 {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.sync-controller .subtitle {
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 2rem;
+  font-size: 1.1rem;
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.setting-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.setting-group label {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  color: #fff;
+}
+
+.snap-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.snap-btn {
+  padding: 0.75rem 1.5rem;
+  border: 2px solid rgba(102, 126, 234, 0.3);
+  border-radius: 8px;
+  background: rgba(102, 126, 234, 0.05);
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-weight: 500;
+}
+
+.snap-btn:hover {
+  border-color: #667eea;
+  background: rgba(102, 126, 234, 0.15);
+  color: #fff;
+}
+
+.snap-btn.active {
+  border-color: #667eea;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+}
+
+.snap-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.tolerance-control {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.tolerance-slider {
+  flex: 1;
+  height: 6px;
+  cursor: pointer;
+  accent-color: #667eea;
+}
+
+.tolerance-input {
+  width: 80px;
+  padding: 0.5rem;
+  background: rgba(102, 126, 234, 0.1);
+  border: 1px solid rgba(102, 126, 234, 0.3);
+  border-radius: 6px;
+  color: #fff;
+  font-size: 0.9rem;
+  text-align: center;
+}
+
+.tolerance-input:focus {
+  outline: none;
+  border-color: #667eea;
+}
+
+.setting-description {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.info-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  margin-bottom: 2rem;
+}
+
+.info-card {
+  background: rgba(102, 126, 234, 0.1);
+  border: 1px solid rgba(102, 126, 234, 0.3);
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+.info-card h4 {
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+  color: #667eea;
+}
+
+.info-card p {
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 0.5rem;
+  font-size: 0.95rem;
+}
+
+.syncing-status {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  gap: 1rem;
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.syncing-status p {
+  color: #667eea;
+  font-size: 1.1rem;
+  margin-top: 1rem;
+}
+
+.sync-button {
+  width: 100%;
+  padding: 1rem;
+  font-size: 1.1rem;
+  margin-top: 1rem;
+}
+
+@media (max-width: 768px) {
+  .settings-grid,
+  .info-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .sync-controller h2 {
+    font-size: 1.5rem;
+  }
+
+  .tolerance-control {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .tolerance-input {
+    width: 100%;
+  }
+}

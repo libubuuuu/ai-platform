@@ -1,0 +1,92 @@
+# Social Content Platform Console
+
+Enterprise starter for a compliant social content operations platform.
+
+## What It Covers
+
+- Domestic and overseas platform selection
+- Content radar with source attribution and trend analysis
+- Cart-based content selection and remixing
+- Image canvas for similarity generation
+- Owner-only publishing flow to draft boxes or queues
+- AI comment suggestion workflow with human review
+
+## Compliance Boundary
+
+This project intentionally does not include:
+
+- IP rotation or IP isolation
+- Anti-detection or bypassing platform risk controls
+- Unauthorized multi-account abuse
+- Automated spam or covert mass-commenting
+
+Publishing and account access should use official APIs or other authorized integrations.
+
+## Tech Stack
+
+- Frontend: React
+- Backend: Python standard-library HTTP server with a Starlette-compatible app layer
+- Data: in-memory demo store, ready to swap to PostgreSQL or Redis
+
+## Project Layout
+
+```text
+backend/
+  main.py
+  app/
+    models.py
+    server.py
+    store.py
+frontend/
+  src/
+    App.js
+    App.css
+    config.js
+```
+
+## Run Locally
+
+### Backend
+
+```bash
+cd backend
+python -m venv venv
+venv\Scripts\activate
+pip install -r requirements.txt
+python main.py
+```
+
+The API will run at `http://localhost:8000`.
+
+### Frontend
+
+```bash
+cd frontend
+npm install
+npm start
+```
+
+The app will run at `http://localhost:3000`.
+
+## Owner Console
+
+The publishing center is locked by default.
+
+Set the token to unlock:
+
+```text
+owner-demo-token
+```
+
+You can replace it with your own environment variable:
+
+```bash
+set OWNER_ACCESS_TOKEN=your-secret-token
+```
+
+## Notes
+
+- The backend uses mock data so the console works without external services.
+- You can later replace the mock data layer with real platform integrations.
+- The current repo is now aligned to the new social content product direction, not the old sync analyzer demo.
+- The backend exposes a local API at `http://localhost:8000` and a docs endpoint at `/docs`.
