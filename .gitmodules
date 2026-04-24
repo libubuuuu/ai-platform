@@ -1,0 +1,8 @@
+[submodule "backend/vendor/MediaCrawler"]
+	path = backend/vendor/MediaCrawler
+	url = https://github.com/NanmiCoder/MediaCrawler.git
+	branch = main
+[submodule "backend/vendor/social-auto-upload"]
+	path = backend/vendor/social-auto-upload
+	url = https://github.com/dreammis/social-auto-upload.git
+	branch = main
